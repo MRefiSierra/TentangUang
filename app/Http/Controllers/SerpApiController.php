@@ -21,11 +21,13 @@ class SerpApiController extends Controller
             return response()->json(['error' => 'Query parameter is required'], 400);
         }
 
+        // Panggil API SerpApi
         $response = Http::get($this->baseUrl, [
             'api_key' => config('services.serpapi.key'),
             'engine' => 'google_finance',
             'q' => $query,
-            'hl' => 'en',  // Optional: setting language
+            'hl' => 'en', // Optional: setting language
+            'nocache' => 'true', // Supaya mendapatkan data terbaru
         ]);
 
         if ($response->failed()) {
@@ -35,17 +37,33 @@ class SerpApiController extends Controller
         // Ambil data yang diperlukan dari response
         $data = $response->json();
 
-        // Cek apakah data ada di summary
+        // Ambil summary data
         $stockData = $data['summary'] ?? [];
 
-        return [
+        // Ambil graph terakhir
+        $latestGraphData = [];
+        if (isset($data['graph']) && is_array($data['graph'])) {
+            $latestGraphData = end($data['graph']); // Ambil elemen terakhir
+        }
+
+        // Format tanggal untuk 'last_updated'
+        $lastUpdatedRaw = $latestGraphData['date'] ?? null;
+        $lastUpdatedFormatted = null;
+        if ($lastUpdatedRaw) {
+            $dateTime = new \DateTime($lastUpdatedRaw);
+            $lastUpdatedFormatted = $dateTime->format('d M Y, H:i'); // Format ramah pengguna
+        }
+
+        // Gabungkan data ke response
+        return response()->json([
             'stock_code' => $stockData['stock'] ?? null,
             'stock_price' => $stockData['price'] ?? null,
             'daily_change' => $stockData['price_movement']['value'] ?? null,
             'percentage' => $stockData['price_movement']['percentage'] ?? null,
             'movement' => $stockData['price_movement']['movement'] ?? null,
-        ];
-        // return($response->json());
-
+            'latest_graph' => [
+                'last_updated' => $lastUpdatedFormatted,
+            ],
+        ]);
     }
 }

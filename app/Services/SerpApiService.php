@@ -14,6 +14,7 @@ class SerpApiService
             'api_key' => config('services.serpapi.key'),
             'engine' => 'google_finance',
             'q' => $query,
+            'nocache' => 'true', 
         ]);
 
         if ($response->failed()) {
